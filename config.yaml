@@ -1,0 +1,17 @@
+# Config file to run mashr
+# Input options:
+input_dir: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/ashg_eqtl/rectum_label/results/TensorQTL_eQTLS" # Path up to condition directory
+conditions_file: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/temp/temp_out/test_conditions.txt" # File to test conditions. To see how this can be made from TensorQTL output, see 999-gen_input_conditions_TQTL.sh
+suffix: "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # Way to get to the per-chr files from the condition [Up to chr number], which must be followed by .tsv, else input to be adjusted
+chrs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+nchunks: 10000
+
+# Output options:
+outdir: "results"
+
+# Mashr run options:
+nrand: 10000 # The number of random tests to subset from the full dataset. If this is 0, then 0 subset will be performed
+fill_missing_beta: 0 # When there is missing data, what should the beta value for replacement be? 
+fill_missing_se: 10 # When there is missing data, what should the SE value for replacement be? Can be a number of 'max'. 'Max' will replace with the maximimum value observed across all tests
+reference: "mean" # Can be one of 'None', 'mean' or a specific condition
+lfsr: 0.1 # Threshold for determining 'strong' associations - These will be used to determine the data-driven covariance matrices.
