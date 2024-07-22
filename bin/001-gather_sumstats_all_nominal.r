@@ -1,4 +1,4 @@
-# Apply fit mashr model to data
+# Prep data for mashr
 # Author: Bradley
 # Date: 22/07/24
 
@@ -19,6 +19,8 @@ parser$add_argument("-o", "--outdir", default = default="./")
 parser$add_argument("-n", "--nrand", default = 10000)
 parser$add_argument("-fmb", "--fill_missing_beta", default = 0)
 parser$add_argument("-fmse", "--fill_missing_se", default = 10)
+parser$add_argument("-nc", "--nchunks", default = 10000)
+args <- parser$parse_args()
 
 
 # Define combine option
@@ -93,7 +95,7 @@ beta_df <- make_mash_dfs(df_list=res, column="slope", replace_NA=args$fill_missi
 if(args$fill_missing_se == "max"){
     se_df <- make_mash_dfs(df_list=res, column="slope_se", replace_NA=max_overall)
 } else { 
-    se_df <- combine_dataframes(df_list=res, column="slope_se", replace_NA=args$fill_missing_se)
+    se_df <- make_mash_dfs(df_list=res, column="slope_se", replace_NA=args$fill_missing_se)
 } # From here: https://github.com/stephenslab/mashr/issues/17 somewhat reasonable way to deal with missing data is to set SE to something very large
 
 # Plot the sparsity and missingness
@@ -138,5 +140,27 @@ names(use) = c("Bhat", "Shat")
 # Save the mashr object being used
 saveRDS(use, paste0(args$outdir, "/input/sumstats_subset.rds"))
 
+# chunk results across conditions and chromosomes
+if(!exists("unique_tests")){
+  all_tests <- c()
+    for (df in res) {
+        all_tests <- c(all_tests, rownames(df))
+    }
+    unique_tests <- unique(all_tests)
+}
 
+# Chunk
+chunk_vector <- function(vec, n) {
+  split(vec, ceiling(seq_along(vec) / (length(vec) / n)))
+}
 
+chunks = chunk_vector(unique_tests, args$nchunks)
+
+# For each chunk, get the list tests in each condition, make the beta and se dataframes and save
+for(c in seq_along(chunks)){
+  chunk = lapply(reserve, function(x){x[rownames(x) %in% chunks[c],]})
+  beta_chunk <- make_mash_dfs(df_list=chunk, column="slope", replace_NA=args$fill_missing_beta)
+  se_chunk <- make_mash_dfs(df_list=chunk, column="slope_se", replace_NA=args$fill_missing_se)
+  use_chunk = list(as.matrix(beta_chunk), as.matrix(se_chunk))
+  saveRDS(use_chunk, paste0(args$outdir, "/input/chunks/chunk", c, ".rds"))
+}
