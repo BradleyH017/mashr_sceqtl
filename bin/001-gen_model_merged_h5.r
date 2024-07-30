@@ -123,18 +123,12 @@ se_pred = se[rownames(se) %in% all_qval$gene_variant,]
 # this is the set of variants x QTLs that we want to predict for
 
 # Use the top hit per gene per condition, or strong from workflow as the 'strong' set
-use_strong_from_wf = T
-if(use_strong_from_wf){
-  obj=readRDS("results/old/chr1_8conds/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds")
-} else {
-  m.1by1 = mash_1by1(mpred)
-  strong.subset = get_significant_results(m.1by1, as.numeric(args$lfsr_strong))
-  # Summarise the sparsity here
-  genes_strong = unlist(strsplit(rownames(beta_top[strong.subset,]), "\\_"))[c(T,F)]
-  genes_count = table(genes_strong)
-}
+obj=readRDS(args$input_mash)
+initial_strong = mash_set_data(obj$strong.b, obj$strong.s)
+m.1by1 = mash_1by1(initial_strong)
+strong.subset = get_significant_results(m.1by1, as.numeric(args$lfsr_strong))
 
-######## Get random subset ########
+######## Get random subset from the entire dataset + filled ########
 random.subset = sample(1:nrow(beta), args$nrand)
 temp.random = mash_set_data(beta[random.subset,], se[random.subset,])
 
@@ -144,11 +138,7 @@ Vhat = estimate_null_correlation_simple(temp.random)
 
 ######### Set up proper strong/random subsets using the correlation structure ########
 data.random = mash_set_data(beta[random.subset,], se[random.subset,], V=Vhat)
-if(use_strong_from_wf){
-  data.strong = mash_set_data(obj$strong.b, obj$strong.s, V=Vhat)
-} else {
-  data.strong = mash_set_data(beta[strong.subset,], se[strong.subset,], V=Vhat) 
-}
+data.strong = mash_set_data(obj$strong.b[strong.subset,], obj$strong.s[strong.subset,], V=Vhat) 
 
 # Update reference if desired
 if( args$reference != "None"){
@@ -188,18 +178,14 @@ m = mash(data.random, Ulist = Ulist, outputlevel = 1)
 saveRDS(m, paste0(args$outdir, "/model.rds"))
 
 ########## Get posterior summaries #######
-if(use_strong_from_wf){
-  # Predict for the predicted set - now incorporating correlations
-  mpred = mash_set_data(beta_top, se_top, V=Vhat)
-  m2 = mash(mpred, g=get_fitted_g(m), fixg=TRUE)
-} else {
-  # Predict for the strong set
-  m2 = mash(data.strong, g=get_fitted_g(m), fixg=TRUE)
-}
+# Predict for the predicted set - now incorporating correlations
+mpred = mash_set_data(beta_pred, se_pred, V=Vhat)
+m2 = mash(mpred, g=get_fitted_g(m), fixg=TRUE)
 
 ########## Make plots to summarise the model #######
 if(file.exists(paste0(args$outdir, "/model_summary")) == F){
   dir.create(paste0(args$outdir, "/model_summary"))
+  dir.create(paste0(args$outdir, "/model_summary/predicted_results"))
 }
 plotout = paste0(args$outdir, "/model_summary")
 
@@ -250,7 +236,9 @@ psd <- get_psd(m2)
 groups = colnames(lfsr)
 for(i in seq_along(groups)){
   df = data.frame("posterior_means" = pm[,i], "posterior_sd" = psd[,i], "lfsr" = lfsr[,i])
-  write.table(df, paste0(plotout, "/predicted_results/", groups[i], ".txt"))
+  fname = gsub(".tsv", "", groups[i])
+  fname = gsub("merged_", "", fname)
+  write.table(df, paste0(plotout, "/predicted_results/", fname, "_mashr.txt"))
 }
 
 # Save a list of uniquely significant effects at varying thresh
