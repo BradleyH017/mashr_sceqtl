@@ -19,17 +19,15 @@ def get_lines(conditions_file):
     return values
 
 conditions = get_lines(config_load["conditions_file"])
-print("Conditions:", conditions)
 input_dir = config_load["input_dir"]
-print("input_dir:", input_dir)
 suffix_q = config["suffix_q"]
-print("suffix_q:", suffix_q)
 
 # Define rule all
 rule all: 
     input:
         #"results/input/unique_genes.txt"
         #"fastqtl_to_mash_output/merged_test_conditions.mash.rds"
+        #"results/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds","results/input/all_qval.tsv"
         "results/output/model.rds"
 
 # Define execution rules:
@@ -40,7 +38,7 @@ if config["qtl_method"] == "TensorQTL":
         output:
             "results/input/merged_{condition}.tsv.gz",
             "results/input/tested_genes_{condition}.tsv",
-            "results/input/{condition}_qval.tsv
+            "results/input/merged_{condition}_qval.tsv"
         params:
             input_dir=config["input_dir"],
             suffix_nom=config["suffix_nom"],
@@ -71,7 +69,7 @@ if config["qtl_method"] == "TensorQTL":
             gzip results/input/merged_{wildcards.condition}.tsv
 
             # Copy the qval files here too, with new column for 
-            cp $fq results/input/{wildcards.condition}_qval.tsv
+            cp $fq results/input/merged_{wildcards.condition}_qval.tsv
             """
 
 def gather_unique_genes_across_conditions(wildcards):
@@ -108,7 +106,42 @@ rule get_unique_genes:
         done <{params.conditions_file}
         """
 
-rule make_single_qval_file
+def gather_qval_across_conditions(wildcards):
+    return expand("results/input/merged_{condition}_qval.tsv",
+                  condition=conditions)
+
+rule make_single_qval_file:
+    input:
+        gather_qval_across_conditions
+    output:
+        "results/input/all_qval.tsv"
+    params:
+        input_dir=config["input_dir"],
+        suffix_q=config["suffix_q"]
+    resources:
+        mem=5000,
+        queue='normal',
+        mem_mb=5000,
+        mem_mib=5000,
+        disk_mb=5000,
+        tmpdir="tmp",
+        threads=4
+    shell:
+        r"""
+        temp_file=$(mktemp)
+        for f in results/input/merged_*_qval.tsv; do
+            echo $f
+            if [ ! -f {output} ]; then
+                echo "Getting header"
+                head $f -n 1 >> $temp_file
+                colname=condition
+                awk -v value="$colname" 'BEGIN{{FS=OFS="\t"}} {{print $0, value}}' "$temp_file" >> {output}
+            fi
+            base=$(basename "$f")
+            awk -v value="$base" 'BEGIN{{FS=OFS="\t"}} {{print $0, value}}' "$f" | tail -n +2 >> {output}
+        done
+        """
+
 
 def gather_merged_genes_across_conditions(wildcards):
     return expand("results/input/merged_{condition}.tsv.gz",
@@ -121,8 +154,8 @@ rule make_h5s:
         "results/input/merged_test_conditions.list",
         gather_merged_genes_across_conditions
     output:
-        "fastqtl_to_mash_output/merged_test_conditions.mash.rds",
-        "fastqtl_to_mash_output/merged_test_conditions.h5
+        "results/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds",
+        "results/input/fastqtl_to_mash_output/merged_test_conditions.h5"
     params:
         function=config["function"],
         random_per_gene=config["random_per_gene"],
@@ -145,26 +178,37 @@ rule make_h5s:
             --gene-list {input[0]} \
             -j 8 \
             --best-per-gene {params.strong_per_gene} \
-            --random-per-gene {params.random_per_gene}
-            --random-snp-size {params.nrand}
+            --random-per-gene {params.random_per_gene} \
+            --random-snp-size {params.nrand} \
+            --cwd results/input/fastqtl_to_mash_output
+        
+        #mv fastqtl_to_mash_output results/input/
         """
 
 rule gen_model:
     input:
-        "fastqtl_to_mash_output/merged_test_conditions.h5
-        "fastqtl_to_mash_output/merged_test_conditions.mash.rds"
+        "results/input/fastqtl_to_mash_output/merged_test_conditions.h5",
+        "results/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds",
+        "results/input/all_qval.tsv"
     output:
-        "results/output/model.rds"
+        "results/output/model.rds",
+        "results/output/complete_flag.txt"
     params:
-        
+        max_missing = config["max_missing"],
+        replace_beta = config["replace_beta"],
+        replace_se = config["replace_se"],
+        lfsr_strong = config["lfsr_strong"],
+        use_complete_random = config["use_complete_random"],
+        nrand = config["nrand"],
         reference = config["reference"],
         include_matrices = config["include_matrices"],
+        dd_matrix_version = config["dd_matrix_version"]
     resources:
-        mem=5000,
+        mem=50000,
         queue='long',
-        mem_mb=5000,
-        mem_mib=5000,
-        disk_mb=5000,
+        mem_mb=50000,
+        mem_mib=50000,
+        disk_mb=50000,
         tmpdir="tmp",
         threads=4
     conda:
@@ -181,5 +225,5 @@ rule gen_model:
         echo $matrices_combined
 
         # Pass to script
-        Rscript bin/001-gen_model.r -i {input} -o "results/output" -m $matrices_combined -r {params.reference}
+        Rscript bin/001-gen_model_merged_h5.r -ih {input[0]} -im {input[1]} -mm {params.max_missing} -rb {params.replace_beta} -rs {params.replace_se} -qv {input[2]} -ls {params.lfsr_strong} -ucr {params.use_complete_random} -nr {params.nrand} -o "results/output" -m $matrices_combined -r {params.reference} -d {params.dd_matrix_version}
         """

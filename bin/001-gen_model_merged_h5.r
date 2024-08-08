@@ -72,31 +72,35 @@ h5_mashr_per_gene <- function(f, gene, max.missing=Inf, replace_beta, replace_be
 
 print("Loading args")
 parser <- ArgumentParser()
-parser$add_argument("-i", "--input_f", default = "")
+parser$add_argument("-ih", "--input_h5", default = "")
+parser$add_argument("-im", "--input_mash", default = "")
 parser$add_argument("-mm", "--max_missing", default = "Inf")
 parser$add_argument("-rb", "--replace_beta", default = "0")
-parser$add_argument("-rb", "--replace_se", default = "1")
+parser$add_argument("-rs", "--replace_se", default = "1")
 parser$add_argument("-qv", "--qval_f", default = "")
 parser$add_argument("-ls", "--lfsr_strong", default="0.1")
+parser$add_argument("-ucr", "--use_complete_random", default="FALSE")
 parser$add_argument("-nr", "--nrand", default="10000")
 parser$add_argument("-o", "--outdir", default="./")
 parser$add_argument("-m", "--matrices", default="./")
 parser$add_argument("-r", "--reference", default="./")
+parser$add_argument("-d", "--dd_matrix_version", default="./")
 #parser$add_argument("-nc", "--nchunks", default = 10000)
 args <- parser$parse_args()
 print(args)
 
 # Testing
-# args=list(input_h5 = "results/old/chr1_8conds/input/fastqtl_to_mash_output/merged_test_conditions.h5", input_mash = "results/old/chr1_8conds/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds", max_missing="Inf", replace_beta = "0", replace_se = "1", qval_f = "results/input/all_qval.tsv", lfsr_strong="0.1", nrand = "100000", outdir = "results/old/chr1_8conds/output", matrices = "pca,canonical,flash", reference="None")
+# args=list(input_h5 = "results/input/fastqtl_to_mash_output/merged_test_conditions.h5", input_mash = "results/input/fastqtl_to_mash_output/merged_test_conditions.mash.rds", max_missing="Inf", replace_beta = "0", replace_se = "1", qval_f = "results/input/all_qval.tsv", lfsr_strong="0.1", use_complete_random = "FALSE", nrand = "10000", outdir = "results/old/chr1_8conds/output", matrices = "pca,canonical,flash", reference="None", dd_matrix_version="mashr")
 
 ######### Prepping data ###########
 # load in the complete merged dataframe matrix
+print(getwd())
+print(paste0("Reading from: ", args$input_h5))
 h5file <- H5Fopen(args$input_h5)
 overview = h5ls(h5file)
 genes = overview$name[grep("ENSG", overview$name)]
 mash_per_gene = lapply(genes, function(x){
-    print(x)
-    h5_mashr_per_gene(f=args$input_f, g=x, replace_beta="after", replace_beta_se="after")
+    h5_mashr_per_gene(f=args$input_h5, g=x, replace_beta=args$replace_beta, replace_beta_se=args$replace_se)
 })
 
 # Combine into a single object
@@ -114,8 +118,10 @@ se = do.call(rbind, se_all)
 all_qval = read.delim(args$qval_f, sep = "\t")
 all_qval$gene_variant = paste0(all_qval$phenotype_id, "_", all_qval$variant_id)
 
-# ******* TEMPORRY BUG FIX ******** #
-all_qval$gene_variant = gsub("_rs", "_s", all_qval$gene_variant) # UNIQUE TO US, and possibly a bug
+# ******* TEMPORRY BUG FIX: 'r' from rsids are lost from h5 prep. Means we fail to test ******** #
+if(grepl("_rs", all_qval$gene_variant[1])){
+  all_qval$gene_variant = gsub("_rs", "_s", all_qval$gene_variant)
+}
 
 # Intersect beta/se, for the variants that were top per condition - in the qval file
 beta_pred = beta[rownames(beta) %in% all_qval$gene_variant,]
@@ -123,14 +129,22 @@ se_pred = se[rownames(se) %in% all_qval$gene_variant,]
 # this is the set of variants x QTLs that we want to predict for
 
 # Use the top hit per gene per condition, or strong from workflow as the 'strong' set
+# We are using the set from the workflow as this automatically selects the eQTL per gene with the highest absolute zstatistic (https://github.com/stephenslab/mashr/issues/126)
+# Missing values here are also really not well tolerated
 obj=readRDS(args$input_mash)
 initial_strong = mash_set_data(obj$strong.b, obj$strong.s)
 m.1by1 = mash_1by1(initial_strong)
 strong.subset = get_significant_results(m.1by1, as.numeric(args$lfsr_strong))
 
-######## Get random subset from the entire dataset + filled ########
-random.subset = sample(1:nrow(beta), args$nrand)
-temp.random = mash_set_data(beta[random.subset,], se[random.subset,])
+######## Get random subset from the entire dataset ########
+if(as.logical(args$use_complete_random)){
+  # use only the complete random subset if desired
+  temp.random = mash_set_data(obj$random.b, obj$random$s)
+} else {
+  # Or that with filled in values
+  random.subset = sample(1:nrow(beta), args$nrand)
+  temp.random = mash_set_data(beta[random.subset,], se[random.subset,])
+}
 
 ######### Correlation structure ###########
 # Estimating correlation structure from the random tests
@@ -147,23 +161,27 @@ if( args$reference != "None"){
 }
 
 ######### Derive data-driven covariance matrices ########
-want_matrices = unlist(strsplit(args$matrices, ","))
-dd_matrices = NULL
-if("pca" %in% want_matrices){
-  U.pca = cov_pca(data.strong,5)
-  dd_matrices = c(U.pca)
-}
-if("flash" %in% want_matrices){
-  U.f = cov_flash(data.strong, factors="nonneg", tag="non_neg")
-  if(length(dd_matrices) == 0){
-    dd_matrices[[1]] = U.f
-  } else {
-    dd_matrices = c(dd_matrices, U.f)
+if(args$dd_matrix_version == "mashr"){
+  want_matrices = unlist(strsplit(args$matrices, ","))
+  dd_matrices = NULL
+  if("pca" %in% want_matrices){
+    U.pca = cov_pca(data.strong,5)
+    dd_matrices = c(U.pca)
   }
+  if("flash" %in% want_matrices){
+    U.f = cov_flash(data.strong, factors="nonneg", tag="non_neg")
+    if(length(dd_matrices) == 0){
+      dd_matrices[[1]] = U.f
+    } else {
+      dd_matrices = c(dd_matrices, U.f)
+    }
+  }
+  # Apply extreme deconvolution 
+  U.ed = cov_ed(data.strong, dd_matrices)
+} else {
+  # Apply ultimate deconvolution
+  # TO DO
 }
-
-# Apply extreme deconvolution 
-U.ed = cov_ed(data.strong, dd_matrices)
 
 ########## Now fit the mash model (data-driven + canonical) to random tests ##########
 if("canonical" %in% want_matrices){
@@ -225,7 +243,7 @@ write.table(get_loglik(m), paste0(plotout, "/log_likelihood.txt"), col.names=F, 
 write.table(sharing, paste0(plotout, "/pairwise_sharing.txt"))
 
 # plot / save the estimates pi for sharing across covariance matrices
-pdf(file=paste0(plotout, "/estimated_pi_covariances.pdf"))
+pdf(file=paste0(plotout, "/estimated_pi_covariances.pdf"), width=16, height=6)
 barplot(get_estimated_pi(m),las = 2)
 dev.off()
 
@@ -247,3 +265,6 @@ for( t in thresh){
   unique = names(sig_count[sig_count == 1])
   write.table(unique, paste0(plotout, "/predicted_results/unique_effects_lfsr_", t, ".txt"), row.names=F, col.names=F, quote=F)
 }
+
+# Save flag to indicate ran successfully
+write.table("SUCCESSFUL", paste0(args$outdir, "/complete_flag.txt"), row.name=F, col.names=F, quote=F)
