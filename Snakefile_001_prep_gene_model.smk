@@ -164,13 +164,13 @@ rule make_h5s:
     singularity:
         config["h5_singularity"]
     resources:
-        mem=5000,
+        mem=25000,
         queue='long',
-        mem_mb=5000,
-        mem_mib=5000,
-        disk_mb=5000,
+        mem_mb=25000,
+        mem_mib=25000,
+        disk_mb=25000,
         tmpdir="tmp",
-        threads=4
+        threads=40
     shell:
         r"""
         sos run {params.function} \
