@@ -10,6 +10,7 @@ library(ggplot2)
 library(purrr)
 library(flashier)
 library(argparse)
+library(rhdf5)
 set.seed(123)
 
 print("Loading args")
@@ -25,6 +26,8 @@ print(args)
 # Testing
 # args=list(input_f = "results/input_chr1_4/fastqtl_to_mash_output/merged_test_conditions.mash.rds", outdir = "results/output", matrices = "pca,canonical,flash", reference=NULL)
 
+
+
 # Load in the mashr object
 obj <- readRDS(args$input_f)
 
@@ -37,7 +40,7 @@ data.random = mash_set_data(obj$random.b, obj$random.s, V=Vhat)
 data.strong = mash_set_data(obj$strong.b, obj$strong.s, V=Vhat)
 
 # Update reference if desired
-if(!is.null(args$reference)){
+if( args$reference != "None"){
   data.random <- mash_update_data(data.random, ref = args$reference)
   data.strong <- mash_update_data(data.strong, ref = args$reference)
 }

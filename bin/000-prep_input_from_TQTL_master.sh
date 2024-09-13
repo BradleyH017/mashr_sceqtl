@@ -59,7 +59,7 @@ module load ISG/singularity/3.11.4
 # Running
 singularity shell -B /lustre -B /software $repo/hdf5tools_latest.sif
 # Make sure we are where we want the output files to be
-cd /lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/results/input
+cd /lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/results/input_4cond_chr1
 func=/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/bin/fastqtl_to_mash.ipynb
 # --best-per-gene 1 = Extracts the top eQTL per gene for 'strong' set
 # --random-snp-size = Selects the number of random SNPs for the analysis
@@ -67,5 +67,6 @@ sos run $func \
     --data-list merged_test_conditions.list \
     --gene-list unique_tested_genes.tsv \
     -j 8 \
-    --best-per-gene 1 \
+    --best-per-gene 0 \
+    --random-per-gene -1 \
     --random-snp-size 200000

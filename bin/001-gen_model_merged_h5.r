@@ -132,6 +132,12 @@ se_pred = se[rownames(se) %in% all_qval$gene_variant,]
 # We are using the set from the workflow as this automatically selects the eQTL per gene with the highest absolute zstatistic (https://github.com/stephenslab/mashr/issues/126)
 # Missing values here are also really not well tolerated
 obj=readRDS(args$input_mash)
+# Remove duplicates
+if(any(duplicated(rownames(obj$strong.b)))){
+  print("THERE ARE DUPLICATE VALUES IN THE STRONG MATRIX")
+  obj$strong.b = obj$strong.b[!duplicated(obj$strong.b),]
+  obj$strong.s = obj$strong.s[!duplicated(obj$strong.s),]
+}
 initial_strong = mash_set_data(obj$strong.b, obj$strong.s)
 m.1by1 = mash_1by1(initial_strong)
 strong.subset = get_significant_results(m.1by1, as.numeric(args$lfsr_strong))

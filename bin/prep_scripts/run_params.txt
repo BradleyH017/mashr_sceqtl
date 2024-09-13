@@ -1,0 +1,5 @@
+/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/tobi_qtl_analysis/repos/nf-hgi_eqtl/2024_07_07-freeze005_TI_base_results/TensorQTL_eQTLS
+22
+OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr
+OPTIM_pcs/base_output__base/Cis_eqtls_qval.tsv
+/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/results/input

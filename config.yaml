@@ -1,17 +1,23 @@
 # Config file to run mashr
 # Input options:
-input_dir: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/ashg_eqtl/rectum_label/results/TensorQTL_eQTLS" # Path up to condition directory
-conditions_file: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/temp/temp_out/test_conditions.txt" # File to test conditions. To see how this can be made from TensorQTL output, see 999-gen_input_conditions_TQTL.sh
-suffix: "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # Way to get to the per-chr files from the condition [Up to chr number], which must be followed by .tsv, else input to be adjusted
-chrs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-nchunks: 10000
-
-# Output options:
-outdir: "results"
+qtl_method: "TensorQTL"
+input_dir: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/tobi_qtl_analysis/repos/nf-hgi_eqtl/2024_07_07-freeze005_TI_base_results/TensorQTL_eQTLS" # Path up to condition directory. Results need to be stored here with each condition a subdirectory and results enclosed within each.
+conditions_file: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/results/input/test_conditions.txt" # File to test conditions. To see how this can be made from TensorQTL output, see 999-gen_input_conditions_TQTL.sh
+suffix_nom: "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # Way to get to the per-chr files from the condition [Up to chr number], which must be followed by .tsv, else input to be adjusted
+suffix_q: "OPTIM_pcs/base_output__base/Cis_eqtls_qval.tsv" # "OPTIM_pcs/base_output__base/Cis_eqtls_qval.tsv" # Path to top hit per gene results for each condition (e.g 'Cis_eqtls_qval.tsv' for TensorQTL output)
+h5_singularity: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/hdf5tools_latest.sif" # Path to h5 singularity container 
+function: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/bin/fastqtl_to_mash.ipynb" # Path to aggregation function
+strong_per_gene: 1 # Number of hits per gene to include in the 'strong' set. 
+random_per_gene: -1 # Select random tests based on N per gene. To use a random selected from everything (nrand, below), set this to -1. Otherwise nrand will be ignored.
 
 # Mashr run options:
-nrand: 10000 # The number of random tests to subset from the full dataset. If this is 0, then 0 subset will be performed
-fill_missing_beta: 0 # When there is missing data, what should the beta value for replacement be? 
-fill_missing_se: 10 # When there is missing data, what should the SE value for replacement be? Can be a number of 'max'. 'Max' will replace with the maximimum value observed across all tests
-reference: "mean" # Can be one of 'None', 'mean' or a specific condition
-lfsr: 0.1 # Threshold for determining 'strong' associations - These will be used to determine the data-driven covariance matrices.
+max_missing: Inf # Maxmimum number of conditions for a gene to be missing to not be included in prediction. If set 'Inf', no gene will be excluded
+replace_beta: 0 # What value to replace missing beta values with?
+replace_se: 10 # What value to replace missing SE values with?
+nrand: 200000 # The number of random tests to subset from the full dataset. If this is 0, then 0 subset will be performed
+use_complete_random: FALSE # Use a complete set of random values or use a set with the replace_beta and replace_se values? If TRUE, this will grab the set determined by the h5 prep files
+lfsr_strong: 0.1 # LFSR threshold to initially define the strong subset of tests
+lfsr_alpha: 0.05 # LFSR threshold to extract significant tests from in the end
+reference: "None" # How should the mashr model be used? Can be one of 'None', 'mean' or a specific condition
+include_matrices: ["pca", "canonical", "flash"] # Which matrices are to be used as input for the model
+dd_matrix_version: "mashr" # Can be one of 'mashr' for original () or 'udr' for improved data-driven covariance matrix calculation (https://stephenslab.github.io/udr/articles/udr_intro.html) - udr not yet implemented

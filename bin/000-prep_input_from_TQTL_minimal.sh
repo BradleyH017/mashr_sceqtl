@@ -20,6 +20,9 @@ for dir in ${inputdir}/*; do
     fi
 done
 
+# Optional: Remove the category-level results and Unnaotated results
+
+
 
 # Subset tests for just a few chromosomes in a temp directory
 mkdir -p temp/temp_input

@@ -164,13 +164,13 @@ rule make_h5s:
     singularity:
         config["h5_singularity"]
     resources:
-        mem=25000,
+        mem=500000,
         queue='long',
-        mem_mb=25000,
-        mem_mib=25000,
-        disk_mb=25000,
+        mem_mb=500000,
+        mem_mib=500000,
+        disk_mb=500000,
         tmpdir="tmp",
-        threads=40
+        threads=60
     shell:
         r"""
         sos run {params.function} \
@@ -204,11 +204,11 @@ rule gen_model:
         include_matrices = config["include_matrices"],
         dd_matrix_version = config["dd_matrix_version"]
     resources:
-        mem=50000,
+        mem=650000,
         queue='long',
-        mem_mb=50000,
-        mem_mib=50000,
-        disk_mb=50000,
+        mem_mb=650000,
+        mem_mib=650000,
+        disk_mb=650000,
         tmpdir="tmp",
         threads=4
     conda:
