@@ -42,7 +42,8 @@ if config["qtl_method"] == "TensorQTL":
         params:
             input_dir=config["input_dir"],
             suffix_nom=config["suffix_nom"],
-            suffix_q=config["suffix_q"]
+            suffix_q=config["suffix_q"],
+            maf=config["maf"]
         resources:
             mem=5000,
             queue='normal',
@@ -57,8 +58,9 @@ if config["qtl_method"] == "TensorQTL":
             echo {wildcards.condition}
             fnom1={params.input_dir}/{wildcards.condition}/{params.suffix_nom}1.tsv
             head $fnom1 -n 1 >> results/input/merged_{wildcards.condition}.tsv
+            maf={params.maf}
             for c in {params.input_dir}/{wildcards.condition}/{params.suffix_nom}*.tsv; do
-                tail -n +2 ${{c}} >> results/input/merged_{wildcards.condition}.tsv
+                tail -n +2 ${{c}} | awk -v maf="$maf" '$4 > maf && $4 < (1-maf)' >> results/input/merged_{wildcards.condition}.tsv
             done
 
             # get the genes

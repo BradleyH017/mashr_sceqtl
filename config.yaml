@@ -1,10 +1,11 @@
 # Config file to run mashr
 # Input options:
 qtl_method: "TensorQTL"
-input_dir: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/tobi_qtl_analysis/repos/nf-hgi_eqtl/2024_07_07-freeze005_TI_base_results/TensorQTL_eQTLS" # Path up to condition directory. Results need to be stored here with each condition a subdirectory and results enclosed within each.
+input_dir: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/2024-08-28_ashg_eqtl/RESULTS/cell_state_only" # Path up to condition directory. Results need to be stored here with each condition a subdirectory and results enclosed within each.
 conditions_file: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/results/input/test_conditions.txt" # File to test conditions. To see how this can be made from TensorQTL output, see 999-gen_input_conditions_TQTL.sh
-suffix_nom: "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # Way to get to the per-chr files from the condition [Up to chr number], which must be followed by .tsv, else input to be adjusted
+suffix_nom: "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs." # "OPTIM_pcs/base_output__base/cis_nominal1.cis_qtl_pairs.chr" # Way to get to the per-chr files from the condition [Up to chr number], which must be followed by .tsv, else input to be adjusted
 suffix_q: "OPTIM_pcs/base_output__base/Cis_eqtls_qval.tsv" # "OPTIM_pcs/base_output__base/Cis_eqtls_qval.tsv" # Path to top hit per gene results for each condition (e.g 'Cis_eqtls_qval.tsv' for TensorQTL output)
+maf: 0.05 # Minor allele frequency (additional filter if not already used)
 h5_singularity: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/hdf5tools_latest.sif" # Path to h5 singularity container 
 function: "/lustre/scratch126/humgen/projects/sc-eqtl-ibd/analysis/bradley_analysis/scripts/scRNAseq/mashr_sceqtl/bin/fastqtl_to_mash.ipynb" # Path to aggregation function
 strong_per_gene: 1 # Number of hits per gene to include in the 'strong' set. 
