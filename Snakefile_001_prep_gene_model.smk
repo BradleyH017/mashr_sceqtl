@@ -167,18 +167,33 @@ rule make_h5s:
         config["h5_singularity"]
     resources:
         mem=500000,
-        queue='long',
         mem_mb=500000,
         mem_mib=500000,
         disk_mb=500000,
-        tmpdir="tmp",
-        threads=60
+        tmpdir="tmp"
+    threads: 60
     shell:
         r"""
-        sos run {params.function} \
+        echo "printing sys path"
+        python -c "import sys; print(sys.path)"
+
+        # Current path
+        echo "Current pyton path"
+        echo $PYTHONPATH
+
+        # Adding custom path
+        echo "Adding python path"
+        export PYTHONPATH={workflow.basedir}/extra_pip:$PYTHONPATH
+        echo $PYTHONPATH
+
+        # Check sos
+        echo "which sos"
+        which sos
+
+        /opt/conda/bin/python3.7 -m sos run {params.function} \
             --data-list {input[1]} \
             --gene-list {input[0]} \
-            -j 8 \
+            -j 40 \
             --best-per-gene {params.strong_per_gene} \
             --random-per-gene {params.random_per_gene} \
             --random-snp-size {params.nrand} \
@@ -206,15 +221,15 @@ rule gen_model:
         include_matrices = config["include_matrices"],
         dd_matrix_version = config["dd_matrix_version"]
     resources:
-        mem=650000,
-        queue='long',
-        mem_mb=650000,
-        mem_mib=650000,
-        disk_mb=650000,
-        tmpdir="tmp",
-        threads=4
-    conda:
-        "sm_mashr"
+        mem=750000,
+        queue='teramem',
+        mem_mb=750000,
+        mem_mib=750000,
+        disk_mb=750000,
+        tmpdir="tmp"
+    threads: 4
+    singularity:
+        "/software/hgi/softpack/installs/users/bh18//sm_mashr_hdf5/1-scripts/singularity.sif"
     shell:
         r"""
         # Make dir

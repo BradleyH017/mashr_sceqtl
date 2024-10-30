@@ -1,0 +1,8 @@
+__default__:
+    queue: "normal"
+  
+make_h5s:
+    queue: "long"
+
+gen_model:
+    queue: "teramem"
